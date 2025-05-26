@@ -1,0 +1,53 @@
+[project]
+name = "weather-prediction"
+version = "0.1.0"
+description = "MLOps 파이프라인을 통한 국내 여행 날씨 예측 서비스"
+authors = [
+    { name = "yuiyeong", email = "joyuiyeong@gmail.com" },
+    { name = "seunghyun", email = "songhune0627@gmail.com" },
+    { name = "imnaagyeong", email = "naagy0814@gmail.com" },
+    { name = "minju", email = "alswn7212@naver.com" },
+    { name = "ahyeon", email = "piona9355@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "pandas (>=2.2.3,<3.0.0)",
+    "numpy (>=2.2.6,<3.0.0)",
+    "scikit-learn (>=1.6.1,<2.0.0)",
+    "matplotlib (>=3.10.3,<4.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+    "xgboost (>=3.0.2,<4.0.0)",
+    "lightgbm (>=4.6.0,<5.0.0)",
+    "jupyterlab (>=4.4.2,<5.0.0)",
+    "notebook (>=7.4.2,<8.0.0)",
+    "boto3 (>=1.38.23,<2.0.0)",
+]
+
+
+[tool.poetry.group.airflow.dependencies]
+wandb = "^0.19.11"
+psycopg2-binary = "^2.9.10"
+
+
+[tool.poetry.group.api.dependencies]
+fastapi = "^0.115.12"
+pydantic = "^2.11.5"
+uvicorn = "^0.34.2"
+gunicorn = "^23.0.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.11.11"
+pre-commit = "^4.2.0"
+pytest = "^8.3.5"
+
+
+
+[tool.poetry]
+package-mode = false
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

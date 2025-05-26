@@ -1,0 +1,41 @@
+# 버전 컨트롤
+.git
+.gitignore
+.github
+
+# 캐시 파일들
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 가상 환경
+.venv/
+venv/
+ENV/
+
+# 로컬 개발 파일
+.env
+*.db
+*.sqlite3
+
+# 로그 파일
+logs/
+*.log
+
+# 임시 파일
+.DS_Store
+Thumbs.db
+
+# 노트북 체크포인트
+notebooks/.ipynb_checkpoints/
+
+# 문서와 테스트
+docs/
+tests/
+
+# Airflow 로컬 파일 (API 빌드 시 제외)
+airflow/logs/
+airflow/airflow.db
