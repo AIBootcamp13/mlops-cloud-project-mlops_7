@@ -1,0 +1,70 @@
+{
+  // 컨테이너 환경의 이름 (VS Code 왼쪽 하단에 표시됨)
+  "name": "MLOps Project - Airflow Webserver",
+
+  // 사용할 docker-compose 파일 경로
+  "dockerComposeFile": ["../docker-compose.yml"],
+
+  // docker-compose.yml에서 연결할 서비스 이름
+  "service": "airflow-webserver",
+
+  // 컨테이너 내에서 VS Code가 열 작업 폴더 경로
+  // /opt로 설정하여 /opt/project와 /opt/airflow 모두 접근 가능
+  "workspaceFolder": "/opt",
+
+  // VS Code 설정 및 확장 프로그램 사용자 정의
+  "customizations": {
+    "vscode": {
+      // VS Code 편집기 설정
+      "settings": {
+        // Python 인터프리터 경로 설정
+        "python.defaultInterpreterPath": "/home/airflow/.local/bin/python",
+
+        // Python 린팅 활성화
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+
+        // 코드 포맷터 설정
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,  // 저장 시 자동 포맷팅
+
+        // 기본 터미널 프로필 설정
+        "terminal.integrated.defaultProfile.linux": "bash",
+
+        // Python 모듈 검색 경로 추가 (자동완성, 정의 이동 등에 필요)
+        "python.analysis.extraPaths": [
+          "/opt/airflow",
+          "/opt/project/src",
+          "/opt/project/notebooks"
+        ],
+
+        // 파일 유형 연결 설정
+        "files.associations": {
+          "*.py": "python"
+        },
+
+        // Python 타입 체크 수준 설정
+        "python.analysis.typeCheckingMode": "basic",
+
+        // Jupyter 노트북 설정
+        "jupyter.notebookFileRoot": "/opt/project"
+      },
+
+      // 자동으로 설치할 VS Code 확장 프로그램
+      "extensions": [
+        "ms-python.python",             // Python 지원
+        "ms-python.vscode-pylance",     // Python 언어 서버 (향상된 자동완성)
+        "ms-toolsai.jupyter",           // Jupyter 노트북 지원
+        "ms-azuretools.vscode-docker",  // Docker 지원
+        "redhat.vscode-yaml",           // YAML 파일 지원
+        "esbenp.prettier-vscode"        // 코드 포맷터
+      ]
+    }
+  },
+
+  // 컨테이너에서 호스트로 포워딩할 포트 (Airflow UI용)
+  "forwardPorts": [8080],
+
+  // 컨테이너 내에서 사용할 사용자
+  "remoteUser": "root"
+}
