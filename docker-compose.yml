@@ -37,11 +37,11 @@ x-airflow-common: &airflow-common
     - .env
   volumes:
     - ./src:/opt/project/src
+    - ./notebooks:/opt/project/notebooks
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/plugins:/opt/airflow/plugins
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/config:/opt/airflow/config
-    - ./notebooks:/opt/notebooks
   depends_on:
     postgres:
       condition: service_healthy
