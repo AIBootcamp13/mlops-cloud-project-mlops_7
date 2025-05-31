@@ -19,7 +19,8 @@ timezone: ZoneInfo = ZoneInfo("Asia/Seoul")
 
 # %% directory
 
-LOG_ROOT_DIR = Path(os.getenv("LOG_ROOT_DIR", "./logs"))
+# LOG_ROOT_DIR = Path(os.getenv("LOG_ROOT_DIR", "./logs"))
+LOG_ROOT_DIR = Path("/opt/airflow/logs")
 LOG_ROOT_DIR.mkdir(parents=True, exist_ok=True)
 
 
