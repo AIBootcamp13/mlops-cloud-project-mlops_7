@@ -24,15 +24,18 @@ RUN poetry config virtualenvs.create false && \
     poetry install --with airflow --no-interaction
 
 # 소스 코드 복사
-COPY src /opt/project/src
+COPY src ./src
+
+# 작업 디렉토리 재설정
+WORKDIR /opt/airflow
 
 # Airflow 관련 디렉토리 복사
-COPY airflow/dags /opt/airflow/dags
-COPY airflow/plugins /opt/airflow/plugins
-COPY airflow/config /opt/airflow/config
+COPY airflow/dags ./dags
+COPY airflow/plugins ./plugins
+COPY airflow/config ./config
 
 # logs 디렉토리 생성 (복사하지 않고 빈 디렉토리 생성)
-RUN mkdir -p /opt/airflow/logs
+RUN mkdir -p ./logs
 
 # PYTHONPATH 설정
-ENV PYTHONPATH=/opt/project:$PYTHONPATH
+ENV PYTHONPATH=/opt/airflow:/opt/project:$PYTHONPATH
