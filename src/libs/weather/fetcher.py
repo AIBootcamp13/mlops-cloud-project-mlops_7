@@ -20,7 +20,7 @@ class AsosDataFetcher:
     """
 
     FORMAT_DATE = "%Y%m%d"
-    MAX_COUNT_PER_PAGE = 999  # 한 페이지당 가져올 아이템 수
+    MAX_COUNT_PER_PAGE = 950  # 한 페이지당 가져올 아이템 수
 
     def __init__(self, service_key: str):
         self.service_key = service_key
