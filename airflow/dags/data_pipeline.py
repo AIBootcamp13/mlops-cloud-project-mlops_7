@@ -1,167 +1,127 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pandas as pd
+from config.default_args import KEY_FEATURE_DATASET_STORAGE_KEY, KEY_LAST_FETCHING_DATE, get_dynamic_default_args
+from dateutil.relativedelta import relativedelta
 
-from airflow import DAG
+from airflow.decorators import dag, task, task_group
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator
-from src.data.collector import Collector
 from src.data.handler import WeatherDataOutlierHandler
 from src.data.imputer import WeatherDataImputer
 from src.data.labeler import WeatherLabeler
 from src.data.loader import AsosDataLoader
 from src.data.transformer import WeatherDataTransformer
 from src.libs.storage import Storage
-from src.libs.weather.fetcher import AsosDataFetcher
+from src.utils.config import DEFAULT_DATE_FORMAT
+from src.utils.log import get_logger
 
 
-# ------------------------
-# 데이터 수집
-# ------------------------
+FIRST_COLLECTING_DURATION = 5  # 연단위
+
+default_args = get_dynamic_default_args()
+_logger = get_logger("weather_data_pipeline")
 
 
-def get_last_loaded_date(**kwargs):
-    """Variable에서 마지막 수집 날짜 조회 / 없으면 5년 전으로 초기화"""
-    last = Variable.get("weather_last_loaded", default_var=None)
-    if last is None:
-        last = (datetime.today() - timedelta(days=365 * 5)).strftime("%Y-%m-%d")
-    kwargs["ti"].xcom_push(key="last_loaded_date", value=last)
-
-
-def collector_weather_data(**kwargs):
-    """ASOS API로 데이터 수집 후 S3 업로드"""
-    last_loaded_date = kwargs["ti"].xcom_pull(key="last_loaded_date", task_ids="get_last_date")
-    start_dt = datetime.strptime(last_loaded_date, "%Y-%m-%d")
-    end_dt = datetime.today() - timedelta(days=1)  # API는 어제까지 데이터 제공
-
-    fetcher = AsosDataFetcher.create()
-    storage = Storage.create()
-
-    collector = Collector(storage, fetcher)
-    collector.collect_all_asos_data(start_date=start_dt, end_date=end_dt)
-    uploaded_keys = collector.upload_all_asos_data()
-
-    print(f"업로드 완료된 파일 수: {len(uploaded_keys)}")
-
-    kwargs["ti"].xcom_push(key="new_last_date", value=end_dt.strftime("%Y-%m-%d"))
-
-
-def update_last_loaded_date(**kwargs):
-    """Variable에 새로운 수집 날짜 저장"""
-    new_date = kwargs["ti"].xcom_pull(key="new_last_date", task_ids="collector_data")
-    Variable.set("weather_last_loaded", new_date)
-
-
-# ------------------------
-# 데이터 적재
-# ------------------------
-
-
-def load_weather_data(**kwargs):
-    """S3에서 CSV 불러와 DataFrame으로 합치기"""
-    storage = Storage.create()
-    loader = AsosDataLoader(storage)
-    df_dict = loader.load()
-    total_df = pd.concat(list(df_dict.values()))
-    kwargs["ti"].xcom_push(key="total_df", value=total_df)
-
-
-# ------------------------
-# 전처리 단계
-# ------------------------
-
-
-def impute_missing_values(**kwargs):
-    """결측치 보간"""
-    total_df = kwargs["ti"].xcom_pull(key="total_df", task_ids="load_data")
-    imputer = WeatherDataImputer()
-    imputed_df = imputer.transform(total_df)
-    kwargs["ti"].xcom_push(key="imputed_df", value=imputed_df)
-
-
-def add_weather_labeler(**kwargs):
-    """날씨 레이블 추가"""
-    imputed_df = kwargs["ti"].xcom_pull(key="imputed_df", task_ids="imputer")
-
-    labeler = WeatherLabeler()
-    labeled_df = labeler.fit_transform(imputed_df)
-
-    kwargs["ti"].xcom_push(key="labeled_df", value=labeled_df)
-
-
-def handle_outliers(**kwargs):
-    """수치형 변수에 대해 IQR 기반 이상치 처리"""
-    labeled_df = kwargs["ti"].xcom_pull(key="labeled_df", task_ids="labeler")
-
-    handler = WeatherDataOutlierHandler()
-    handled_df = handler.fit_transform(labeled_df)
-
-    kwargs["ti"].xcom_push(key="handled_df", value=handled_df)
-
-
-def transform_features(**kwargs):
-    """피처 인코딩 처리"""
-    handled_df = kwargs["ti"].xcom_pull(key="handled_df", task_ids="handler")
-
-    transformer = WeatherDataTransformer()
-    final_df = transformer.fit_transform(handled_df)
-
-    kwargs["ti"].xcom_push(key="final_df", value=final_df)
-
-
-def save_preprocessed_data(**kwargs):
-    """최종 전처리 결과를 S3에 저장"""
-
-    final_df = kwargs["ti"].xcom_pull(key="final_df", task_ids="transformer")
-
-    storage = Storage.create()
-    today_str = datetime.today().strftime("%Y%m%d")
-    file_key = f"preprocessed/preprocessed_weather_data_{today_str}.csv"
-
-    # S3에 저장
-    storage.save_df(final_df, file_key)
-    print(f"[✔] S3 저장 완료 → {file_key}")
-
-
-# ------------------------
-# DAG 정의
-# ------------------------
-
-with DAG(
-    dag_id="weather_pipeline",
-    start_date=datetime(2025, 5, 30),
-    schedule="@daily",
+@dag(
+    dag_id="weather_data_pipeline",
+    start_date=datetime(2025, 6, 1),
+    schedule=relativedelta(months=3),
     catchup=False,
-    tags=["weather", "variable"],
-) as dag:
-    get_last_date = PythonOperator(task_id="get_last_date", python_callable=get_last_loaded_date)
+    tags=["weather", "data-engineering"],
+    default_args=default_args,
+)
+def data_pipeline_dag():
+    storage = Storage.create()
 
-    collector_data = PythonOperator(task_id="collector_data", python_callable=collector_weather_data)
+    @task_group(group_id="data_collection")
+    def collect_asos_data() -> tuple[datetime, pd.DataFrame]:
+        """데이터 수집 작업 그룹"""
 
-    update_variable = PythonOperator(task_id="update_last_date", python_callable=update_last_loaded_date)
+        @task
+        def get_last_fetching_date() -> datetime:
+            """Variable에서 마지막 수집 날짜 조회. 없으면 5년 전으로 초기화"""
+            fetching_date_str = Variable.get(KEY_LAST_FETCHING_DATE, default_var=None)
+            if fetching_date_str is None:
+                return datetime.now() - relativedelta(years=FIRST_COLLECTING_DURATION)
+            return datetime.strptime(fetching_date_str, DEFAULT_DATE_FORMAT)
 
-    load_data = PythonOperator(task_id="load_data", python_callable=load_weather_data)
+        @task
+        def fetch_and_upload_asos_data(_: datetime) -> datetime:
+            """기상청 API 로 데이터 수집 후 S3 업로드"""
+            # TODO 나중에 배포시에 변경될 예정입니다.
+            # end_date = datetime(2025, 5, 31)
+            # end_date = datetime.now() - timedelta(days=1)
+            # collector = Collector(storage=storage, fetcher=AsosDataFetcher.create())
+            # collector.collect_all_asos_data(start_date=start_date, end_date=end_date)
+            # collector.upload_all_asos_data(with_index=False)
+            return datetime(2025, 5, 31)
 
-    imputer = PythonOperator(task_id="imputer", python_callable=impute_missing_values)
+        @task
+        def update_last_fetching_date(new_end_date: datetime) -> None:
+            """Variable 에 새로운 수집 날짜 저장"""
+            Variable.set(KEY_LAST_FETCHING_DATE, new_end_date.strftime(DEFAULT_DATE_FORMAT))
 
-    labeler = PythonOperator(task_id="labeler", python_callable=add_weather_labeler)
+        @task
+        def load_dataset(fetching_date: datetime) -> pd.DataFrame:
+            """S3 에서 CSV 불러와 DataFrame 으로 변환"""
+            datasets_per_station = AsosDataLoader(storage=storage).load_at(fetching_date=fetching_date)
+            return pd.concat(list(datasets_per_station.values()))
 
-    handler = PythonOperator(task_id="handler", python_callable=handle_outliers)
+        # 데이터 수집
+        new_last_fetching_date = fetch_and_upload_asos_data(get_last_fetching_date())
 
-    transformer = PythonOperator(task_id="transformer", python_callable=transform_features)
+        # 데이터 적재
+        update_last_fetching_date(new_last_fetching_date)
+        datasets_per_asos_station = load_dataset(new_last_fetching_date)
+        return new_last_fetching_date, datasets_per_asos_station
 
-    saver = PythonOperator(task_id="save_result", python_callable=save_preprocessed_data)
+    @task_group(group_id="data_preprocessing")
+    def preprocess_data(raw_dataset: pd.DataFrame, load_date: datetime) -> None:
+        """데이터 전처리 작업 그룹"""
 
-    # DAG 실행 순서
-    (
-        get_last_date
-        >> collector_data
-        >> update_variable
-        >> load_data
-        >> imputer
-        >> labeler
-        >> handler
-        >> transformer
-        >> saver
-    )
-    # load_data >> imputer >> labeler >> handler >> transformer
+        @task
+        def impute_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+            """결측치 보간"""
+            return WeatherDataImputer().fit_transform(df)
+
+        @task
+        def label_dataset(df: pd.DataFrame) -> pd.DataFrame:
+            """날씨 레이블 추가"""
+            return WeatherLabeler().fit_transform(df)
+
+        @task
+        def handle_outliers(df: pd.DataFrame) -> pd.DataFrame:
+            """수치형 변수에 대해 IQR 기반 이상치 처리"""
+            return WeatherDataOutlierHandler().fit_transform(df)
+
+        @task
+        def transform_features(df: pd.DataFrame) -> pd.DataFrame:
+            """feature 인코딩 처리"""
+            return WeatherDataTransformer().fit_transform(df)
+
+        @task
+        def save_features(feature_df: pd.DataFrame, dataset_date: datetime) -> str:
+            """최종 전처리 결과를 S3 에 저장 및 그 key 를 Variable 에 저장"""
+            filename = "weather_features.csv"
+            sub_directory = dataset_date.strftime(DEFAULT_DATE_FORMAT)
+            storage_key = storage.make_csv_key_in_features(filename, sub_directory=sub_directory)
+            if not storage.upload_dataframe(feature_df, key=storage_key):
+                raise RuntimeError("features 업로드 실패")
+
+            Variable.set(KEY_FEATURE_DATASET_STORAGE_KEY, storage_key)
+            return storage_key
+
+        # 전처리 단계
+        imputed_df = impute_missing_values(raw_dataset)
+        labeled_df = label_dataset(imputed_df)
+        handled_df = handle_outliers(labeled_df)
+        features = transform_features(handled_df)
+        # 전처리된 데이터 저장
+        feature_key = save_features(features, dataset_date=load_date)
+        _logger.info(f"Uploaded features;{feature_key}")
+
+    last_fetching_date, dataset = collect_asos_data()
+    preprocess_data(dataset, load_date=last_fetching_date)
+
+
+data_pipeline_dag()
