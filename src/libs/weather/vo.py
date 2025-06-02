@@ -12,7 +12,7 @@ from src.utils import convert_camel_to_snake
 from src.utils.log import get_logger
 
 
-asos_logger = get_logger(__name__)
+_asos_logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -153,7 +153,7 @@ class AsosDataResponse:
         fail_response = cls.create_default()
 
         if not response.ok:  # HTTP 실패
-            asos_logger.warning(f"Failed to load ASOS data; {response.text}")
+            _asos_logger.warning(f"Failed to fetch ASOS data; {response.text}")
             return AsosDataResponse.create_default()
 
         try:
@@ -167,17 +167,17 @@ class AsosDataResponse:
             item_list = items_dict.get(cls.Key.ITEM, [])
 
             if header.get(cls.Key.RESULT_CODE) != cls.RESULT_CODE_SUCCESS:
-                asos_logger.warning(f"Failed to load ASOS data; {header}", extra=data)
+                _asos_logger.warning(f"Failed to fetch ASOS data; {header}", extra=data)
                 return fail_response
 
             # 필수 데이터가 없으면 실패 응답 반환
             if not item_list:
-                asos_logger.warning("Failed to load ASOS data; Empty list", extra=data)
+                _asos_logger.warning("Failed to fetch ASOS data; Empty list", extra=data)
                 return fail_response
 
             # 아이템 리스트 생성
             items = [AsosData.create(item) for item in item_list]
-            asos_logger.info("Success to load ASOS data.")
+            _asos_logger.info("Success to fetch ASOS data")
             # 성공 응답 반환
             return cls(
                 is_success=True,
@@ -188,7 +188,7 @@ class AsosDataResponse:
             )
         except (ValueError, KeyError, TypeError) as e:
             # JSON 파싱 오류나 기타 예외 발생 시 실패 응답 반환
-            asos_logger.warning(f"Failed to parse ASOS data response:\n\t{e!s}", extra={"text": response.text})
+            _asos_logger.warning(f"Failed to parse ASOS data response:\n\t{e!s}", extra={"text": response.text})
             return fail_response
 
     @classmethod

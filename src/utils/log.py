@@ -46,7 +46,7 @@ class JsonFormatter(logging.Formatter):
 def get_logger(logger_name: str) -> logging.Logger:
     logger = logging.getLogger(logger_name)
 
-    if logger.hasHandlers():  # 이미 설정됨
+    if logger.handlers:  # 이미 설정됨
         return logger
 
     log_file_path = _get_log_path(logger_name)

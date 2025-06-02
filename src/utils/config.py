@@ -17,13 +17,23 @@ def get_env_or_raise(key: str) -> str:
 
 timezone: ZoneInfo = ZoneInfo("Asia/Seoul")
 
+DEFAULT_DATE_FORMAT = "%Y%m%d"
+
 # %% directory
 
-LOG_ROOT_DIR = Path(os.getenv("LOG_ROOT_DIR", "./logs"))
+# LOG_ROOT_DIR = Path(os.getenv("LOG_ROOT_DIR", "./logs"))
+LOG_ROOT_DIR = Path("./logs")
 LOG_ROOT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # %% 환경변수
+
+# airflow
+AIRFLOW_OWNER = get_env_or_raise("AIRFLOW_OWNER")
+AIRFLOW_RETRIES: int = int(get_env_or_raise("AIRFLOW_RETRIES"))
+AIRFLOW_RETRY_DELAY_MINUTES: int = int(get_env_or_raise("AIRFLOW_RETRY_DELAY_MINUTES"))
+AIRFLOW_EMAIL_ON_FAILURE: bool = get_env_or_raise("AIRFLOW_EMAIL_ON_FAILURE") == "True"
+AIRFLOW_ALERT_EMAIL: list[str] = get_env_or_raise("AIRFLOW_ALERT_EMAIL").split(",")
 
 # ncloud api key
 NCLOUD_ACCESS_KEY = get_env_or_raise("NCLOUD_ACCESS_KEY")

@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import LabelEncoder
 
+from src.utils.config import DEFAULT_DATE_FORMAT
+
 
 class SafeLabelEncoder:
     CATEGORY_UNKNOWN = "unknown"
@@ -39,8 +41,6 @@ class SafeLabelEncoder:
 
 class WeatherDataTransformer(BaseEstimator, TransformerMixin):
     """기상 데이터의 column 에 대해서, scaling 및 encoding 을 하는 class"""
-
-    DATE_FORMAT = "%Y%m%d"
 
     TARGET_COLUMN = "weather"
     DATETIME_COLUMN = "tm"
@@ -121,7 +121,7 @@ class WeatherDataTransformer(BaseEstimator, TransformerMixin):
         # 일시 데이터 처리
         # '%Y-%m-%d' 형식을 datetime으로 변환 후 '%Y%m%d' 형식의 정수로 변환
         result[self.DATETIME_COLUMN] = (
-            pd.to_datetime(result[self.DATETIME_COLUMN]).dt.strftime(self.DATE_FORMAT).astype(int)
+            pd.to_datetime(result[self.DATETIME_COLUMN]).dt.strftime(DEFAULT_DATE_FORMAT).astype(int)
         )
 
         # 범주형 데이터 처리
