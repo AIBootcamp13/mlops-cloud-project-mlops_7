@@ -101,7 +101,7 @@ class WeatherDataImputer(BaseEstimator, TransformerMixin):
         result = df.copy()
 
         # 그룹별로 처리
-        for group, group_df in result.groupby(self.GROUP_BY_COLUMN):
+        for _, group_df in result.groupby(self.GROUP_BY_COLUMN):
             # 시간순 정렬
             group_df_sorted = group_df.sort_values("tm")
 
