@@ -82,7 +82,8 @@ def data_pipeline_dag():
         @task
         def impute_missing_values(df: pd.DataFrame) -> pd.DataFrame:
             """결측치 보간"""
-            return WeatherDataImputer().fit_transform(df)
+            result = WeatherDataImputer().fit_transform(df)
+            return result.dropna()
 
         @task
         def label_dataset(df: pd.DataFrame) -> pd.DataFrame:
