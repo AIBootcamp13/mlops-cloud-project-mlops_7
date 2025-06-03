@@ -1,6 +1,5 @@
 from datetime import datetime
 
-import pandas as pd
 from config.default_args import KEY_FEATURE_DATASET_STORAGE_KEY, get_dynamic_default_args
 
 from airflow.decorators import dag, task
@@ -28,15 +27,12 @@ def automated_pipeline_dag():
     storage = Storage.create()
 
     @task
-    def load_features() -> pd.DataFrame:
-        """데이터 준비"""
-        feature_storage_key = Variable.get(KEY_FEATURE_DATASET_STORAGE_KEY)
-        return storage.read_as_dataframe(feature_storage_key)
-
-    @task
     def train():
         """모델 학습"""
-        _logger.info("Train Features")
+        # 데이터 준비
+        feature_storage_key = Variable.get(KEY_FEATURE_DATASET_STORAGE_KEY)
+        features = storage.read_as_dataframe(feature_storage_key)
+        _logger.info(f"Train Features; shape: {features.shape}")
         # TODO 모델 학습하고 반환하는 로직을 작성합니다.
 
     @task
@@ -56,9 +52,6 @@ def automated_pipeline_dag():
         """ML Model 을 Model Registry 에 저장"""
         _logger.info("Save Trained ML Model")
         # TODO 학습된 모델을 Model Registry 인 wandb 에 저장하는 로직을 작성합니다.
-
-    features = load_features()
-    _logger.info(f"Load Features{features.shape}")
 
     train()
     test()
