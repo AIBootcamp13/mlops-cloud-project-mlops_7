@@ -6,6 +6,7 @@ from airflow.decorators import dag, task
 from airflow.models import Variable
 from src.libs.storage import Storage
 from src.utils.log import get_logger
+from src.data.models import ModelTrainer, ModelEvaluator, ModelValidator, ModelRegistry
 
 
 FIRST_COLLECTING_DURATION = 5  # 연단위
