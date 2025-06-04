@@ -25,7 +25,7 @@ FIRST_COLLECTING_DURATION = 5  # 연단위
 
 default_args = get_dynamic_default_args()
 
-_logger = get_logger("weather_automated_pipeline")
+_logger = get_logger("ahyeon_weather_automated_pipeline")
 
 MODEL_SAVE_DIR = "/opt/airflow/models"
 
