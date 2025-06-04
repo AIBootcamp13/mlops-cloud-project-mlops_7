@@ -30,7 +30,7 @@ _logger = get_logger("ahyeon_weather_automated_pipeline")
 MODEL_SAVE_DIR = "/opt/airflow/models"
 
 @dag(
-    dag_id="weather_automated_pipeline",
+    dag_id="ahyeon_weather_automated_pipeline",
     start_date=datetime(2025, 6, 1),
     schedule="@daily",
     catchup=False,
@@ -96,7 +96,7 @@ def automated_pipeline_dag():
             run = wandb.init(
                 project = "weather-prediction",
                 name = f"{name}_train",
-                jot_type = "train",
+                job_type = "train",
                 config = model.get_params(),
                 reinit = True
             )
