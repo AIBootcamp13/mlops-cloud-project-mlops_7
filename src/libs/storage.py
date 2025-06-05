@@ -23,6 +23,7 @@ class Storage:
 
     DATASETS_DIR = "datasets"
     FEATURES_DIR = "features"
+    PREPROCESSED_DATASETS_DIR = "preprocessed_datasets"
 
     def __init__(self, access_key: str, secret_key: str, region: str, bucket: str, endpoint: str):
         self.bucket = bucket
@@ -38,13 +39,6 @@ class Storage:
     def make_csv_key_in_datasets(self, filename: str, sub_directory: str | None = None) -> str:
         return self._make_csv_key(
             directory=self.DATASETS_DIR,
-            filename=filename,
-            sub_directory=sub_directory,
-        )
-
-    def make_csv_key_in_features(self, filename: str, sub_directory: str | None = None) -> str:
-        return self._make_csv_key(
-            directory=self.FEATURES_DIR,
             filename=filename,
             sub_directory=sub_directory,
         )
@@ -108,6 +102,24 @@ class Storage:
             return False
         return self._check_and_log_response(task="delete", key=key, response=r)
 
+    def upload_preprocessed_df(
+        self, df: pd.DataFrame, filename: str, sub_directory: str | None = None, err_msg: str | None = None
+    ) -> str:
+        """preprocess 디렉토리에 dataframe 을 업로드."""
+        storage_key = self._make_csv_key_in_preprocessed_datasets(filename, sub_directory)
+        if self.upload_dataframe(df, storage_key):
+            return storage_key
+        raise RuntimeError(err_msg if err_msg else f"Failed to upload {storage_key}")
+
+    def upload_feature_df(
+        self, df: pd.DataFrame, filename: str, sub_directory: str | None = None, err_msg: str | None = None
+    ) -> str:
+        """features 디렉토리에 dataframe 을 업로드."""
+        storage_key = self._make_csv_key_in_features(filename, sub_directory)
+        if self.upload_dataframe(df, storage_key):
+            return storage_key
+        raise RuntimeError(err_msg if err_msg else f"Failed to upload {storage_key}")
+
     def _check_and_log_response(self, task: str, key: str, response: dict) -> bool:
         metadata = response.get("ResponseMetadata", {})
         status_code = metadata.get("HTTPStatusCode")
@@ -118,6 +130,20 @@ class Storage:
 
         _storage_logger.info(f"Success to {task} {key}", extra=response)
         return True
+
+    def _make_csv_key_in_preprocessed_datasets(self, filename: str, sub_directory: str | None = None) -> str:
+        return self._make_csv_key(
+            directory=self.PREPROCESSED_DATASETS_DIR,
+            filename=filename,
+            sub_directory=sub_directory,
+        )
+
+    def _make_csv_key_in_features(self, filename: str, sub_directory: str | None = None) -> str:
+        return self._make_csv_key(
+            directory=self.FEATURES_DIR,
+            filename=filename,
+            sub_directory=sub_directory,
+        )
 
     @staticmethod
     def _make_prefix_of_key(directory: str, sub_directory: str | None) -> str:
