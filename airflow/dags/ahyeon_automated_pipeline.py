@@ -83,10 +83,10 @@ def automated_pipeline_dag():
         _logger.info(f"Loaded x_train, y_train Datasets")
 
         models = {
-            "rf": RandomForestClassifier(),
-            "xgb": XGBClassifier(),
-            "lgbm": LGBMClassifier(),
-            "lr": LogisticRegression()
+            "rf": RandomForestClassifier(max_depth = 9, n_estimators = 150, random_state = 42),
+            "xgb": XGBClassifier(max_depth = 2, random_state = 42),
+            "lgbm": LGBMClassifier(max_depth = 2, random_state = 42),
+            #"lr": LogisticRegression(random_state = 42)
         }
 
         os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
@@ -94,14 +94,14 @@ def automated_pipeline_dag():
 
         for name, model in models.items():
             run = wandb.init(
-                project = "weather-prediction",
-                name = f"{name}_train",
+                project = "ahyeon-weather-prediction",
+                name = f"{name}_add_report_depth_perfect_train",
                 job_type = "train",
                 config = model.get_params(),
                 reinit = True
             )
             model.fit(x_train, y_train)
-            model_path = f"{MODEL_SAVE_DIR}/{name}_model.pkl"
+            model_path = f"{MODEL_SAVE_DIR}/{name}_model_add_report_depth_perfect.pkl"
             joblib.dump(model, model_path)
             model_paths.append(model_path)
 
@@ -123,8 +123,8 @@ def automated_pipeline_dag():
         _logger.info(f"Loaded x_val, y_val Datasets")
 
         for path in paths:
-            name = os.path.basename(path).replace("_model.pkl", "")
-            model = joblib.load(f"{MODEL_SAVE_DIR}/{name}_model.pkl")
+            name = os.path.basename(path).replace("_model_add_report_depth_perfect.pkl", "")
+            model = joblib.load(f"{MODEL_SAVE_DIR}/{name}_model_add_report_depth_perfect.pkl")
             preds = model.predict(x_val)
             
             acc = accuracy_score(y_val, preds)
@@ -134,8 +134,8 @@ def automated_pipeline_dag():
 
             # W&B 기록
             run = wandb.init(
-                project = "weather-prediction",
-                name = f"{name}_eval",
+                project = "ahyeon-weather-prediction",
+                name = f"{name}_add_report_depth_perfect_eval",
                 job_type = "eval",
                 config = {"model_name": name},
                 reinit = True
@@ -147,6 +147,8 @@ def automated_pipeline_dag():
                 "val_f1_macro": f1
             })
             run.finish()
+            _logger.info(f"{name} model - Accuracy : {acc} Precision : {precision} Recall : {recall} F1 Score : {f1}")
+            _logger.info(classification_report(y_val, preds))
 
         _logger.info("Evaluated Trained Models")
 
@@ -163,8 +165,8 @@ def automated_pipeline_dag():
 
         
         for path in paths:
-            name = os.path.basename(path).replace("_model.pkl", "")
-            model = joblib.load(f"{MODEL_SAVE_DIR}/{name}_model.pkl")
+            name = os.path.basename(path).replace("_model_add_report_depth_perfect.pkl", "")
+            model = joblib.load(f"{MODEL_SAVE_DIR}/{name}_model_add_report_depth_perfect.pkl")
             preds = model.predict(x_test)
             
             acc = accuracy_score(y_test, preds)
@@ -174,8 +176,8 @@ def automated_pipeline_dag():
 
             # W&B 기록
             run = wandb.init(
-                project="weather-prediction",
-                name=f"{name}_test",
+                project="ahyeon-weather-prediction",
+                name=f"{name}_add_report_depth_perfect_test",
                 job_type="test",
                 config={"model_name": name},
                 reinit=True
@@ -187,6 +189,8 @@ def automated_pipeline_dag():
                 "test_f1_macro": f1
             })
             run.finish()
+            _logger.info(f"{name} model - Accuracy : {acc} Precision : {precision} Recall : {recall} F1 Score : {f1}")
+            _logger.info(classification_report(y_test, preds))
 
         _logger.info("Tested Trained Models")
 
@@ -194,7 +198,7 @@ def automated_pipeline_dag():
     def save_model(paths: list[str]) -> None:
         """모델들 WANDB에 저장"""
         run = wandb.init(
-            project="weather-prediction",
+            project="ahyeon-weather-prediction",
             name="save_all_model",
             job_type="save",
             config={"num_models": len(paths)}
@@ -203,12 +207,12 @@ def automated_pipeline_dag():
 
         artifact.metadata = {
             "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "model_names": [os.path.basename(p).replace("_model.pkl", "") for p in paths]
+            "model_names": [os.path.basename(p).replace("_model_add_report_depth_perfect.pkl", "") for p in paths]
         }
 
         for path in paths:
-            name = os.path.basename(path).replace("_model.pkl", "")
-            artifact.add_file(path, name=f"{name}_model.pkl")
+            name = os.path.basename(path).replace("_model_add_report_depth_perfect.pkl", "")
+            artifact.add_file(path, name=f"{name}_model_add_report_depth_perfect.pkl")
 
         run.log_artifact(artifact)
         run.finish()
