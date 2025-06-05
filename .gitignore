@@ -115,3 +115,4 @@ Thumbs.db
 .ruff_cache/
 
 airflow/logs
+notebooks/yuiyeong/wandb
