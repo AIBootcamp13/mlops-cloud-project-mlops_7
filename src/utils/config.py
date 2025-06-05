@@ -49,3 +49,7 @@ NCLOUD_STORAGE_ENDPOINT_URL = get_env_or_raise("NCLOUD_STORAGE_ENDPOINT_URL")
 WEATHER_API_KEY = get_env_or_raise("WEATHER_API_KEY")
 
 WEATHER_API_URL = "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
+
+#WANDB 정보
+WANDB_PROJECT=get_env_or_raise("WANDB_PROJECT")
+WANDB_ENTITY=get_env_or_raise("WANDB_ENTITY")

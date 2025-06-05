@@ -1,66 +1,77 @@
-from typing import Any, Dict, Tuple
-
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+import numpy as np
+import time
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import f1_score
+
+import lightgbm as lgb
 import xgboost as xgb
+import wandb
 
 from src.utils.log import get_logger
 
-_logger = get_logger("model_trainer")
+_logger = get_logger(__name__)
 
-class ModelTrainer:
-    def __init__(self, test_size: float = 0.2, random_state: int = 42):
-        self.test_size = test_size
-        self.random_state = random_state
-        self.model = None
-        self.scaler = StandardScaler()
-        
-    def prepare_data(self, features: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
-        """데이터를 학습용과 테스트용으로 분할하고 전처리합니다."""
-        # 특성과 타겟 분리
-        X = features.drop('weather_label', axis=1)
-        y = features['weather_label']
-        
-        # 데이터 분할
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=self.test_size, random_state=self.random_state
-        )
-        
-        # 특성 스케일링
-        X_train_scaled = self.scaler.fit_transform(X_train)
-        X_test_scaled = self.scaler.transform(X_test)
-        
-        return pd.DataFrame(X_train_scaled, columns=X.columns), y_train, \
-               pd.DataFrame(X_test_scaled, columns=X.columns), y_test
-    
-    def train(self, features: pd.DataFrame) -> Dict[str, Any]:
-        """모델을 학습하고 결과를 반환합니다."""
-        _logger.info("Starting model training...")
-        
-        # 데이터 준비
-        X_train, y_train, X_test, y_test = self.prepare_data(features)
-        
-        # XGBoost 모델 초기화 및 학습
-        self.model = xgb.XGBClassifier(
-            n_estimators=100,
-            learning_rate=0.1,
-            max_depth=5,
-            random_state=self.random_state
-        )
-        
-        self.model.fit(X_train, y_train)
-        
-        # 학습 결과 평가
-        train_score = self.model.score(X_train, y_train)
-        test_score = self.model.score(X_test, y_test)
-        
-        _logger.info(f"Training completed. Train score: {train_score:.4f}, Test score: {test_score:.4f}")
-        
-        return {
-            'model': self.model,
-            'scaler': self.scaler,
-            'train_score': train_score,
-            'test_score': test_score,
-            'feature_names': X_train.columns.tolist()
-        } 
+
+class Trainer:
+    """LightGBM, XGBoost, RandomForest 모델을 모두 학습하는 클래스"""
+
+    def __init__(self):
+        self.model_defs = {
+            "lightgbm": lgb.LGBMClassifier(n_estimators=100, random_state=42, verbose=-1),
+            "randomforest": RandomForestClassifier(n_estimators=100, random_state=42),
+            "xgboost": xgb.XGBClassifier(n_estimators=100, random_state=42, eval_metric='mlogloss')
+        }
+
+    def train_all_models(self, X_train: pd.DataFrame, y_train: pd.Series) -> dict:
+        """모든 모델 학습 + CV 결과 및 메타데이터 반환"""
+        tscv = TimeSeriesSplit(n_splits=2)
+        trained_models = {}
+
+        for model_name, model in self.model_defs.items():
+            _logger.info(f"Training model: {model_name}")
+            start_time = time.time()
+            cv_scores = []
+
+            # Cross Validation
+            for fold, (train_idx, val_idx) in enumerate(tscv.split(X_train)):
+                X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+                y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+
+                model.fit(X_tr, y_tr)
+                preds = model.predict(X_val)
+                f1 = f1_score(y_val, preds, average="macro")
+
+                wandb.log({f"{model_name}_fold{fold+1}_f1": f1})
+                cv_scores.append(f1)
+
+            cv_mean = np.mean(cv_scores)
+            cv_std = np.std(cv_scores)
+
+            _logger.info(f"{model_name} - CV Mean F1: {cv_mean:.4f}, Std: {cv_std:.4f}")
+
+            # 전체 데이터로 재학습
+            model.fit(X_train, y_train)
+
+            elapsed_time = round(time.time() - start_time, 2)
+
+            wandb.log({
+                f"{model_name}_cv_mean_f1": cv_mean,
+                f"{model_name}_cv_std_f1": cv_std,
+                f"{model_name}_train_time_sec": elapsed_time
+            })
+
+            # 모델 + 메타데이터 저장
+            trained_models[model_name] = {
+                "model": model,
+                "cv_scores": cv_scores,
+                "cv_mean": cv_mean,
+                "cv_std": cv_std,
+                "train_time_sec": elapsed_time,
+                "model_type": type(model).__name__,
+                "retrained": True
+            }
+
+        return trained_models

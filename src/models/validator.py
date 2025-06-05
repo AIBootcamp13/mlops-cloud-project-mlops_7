@@ -1,45 +1,36 @@
-from typing import Dict, Any, Tuple
-
 import pandas as pd
-from sklearn.model_selection import cross_val_score
-import numpy as np
-
+from sklearn.metrics import f1_score, confusion_matrix
+import wandb
 from src.utils.log import get_logger
 
-_logger = get_logger("model_validator")
+_logger = get_logger(__name__)
 
-class ModelValidator:
-    def __init__(self, cv: int = 5):
-        self.cv = cv
-        self.validation_scores = {}
+class Validator:
+    """모든 모델 검증 클래스"""
     
-    def validate(self, model: Any, X: pd.DataFrame, y: pd.Series) -> Dict[str, Any]:
-        """교차 검증을 수행하고 결과를 반환합니다."""
-        _logger.info(f"Starting {self.cv}-fold cross validation...")
+    def validate_all_models(self, trained_models: dict, X_val: pd.DataFrame, y_val: pd.Series) -> dict:
+        validation_results = {}
         
-        # 교차 검증 수행
-        cv_scores = cross_val_score(model, X, y, cv=self.cv, scoring='accuracy')
+        for model_name, model_info in trained_models.items():
+            model = model_info["model"]
+            predictions = model.predict(X_val)
+            f1 = f1_score(y_val, predictions, average="macro")
+            cm = confusion_matrix(y_val, predictions)
+            
+            # W&B 로깅
+            wandb.log({
+                f"{model_name}_val_f1": f1,
+                f"{model_name}_val_confusion_matrix": cm.tolist()
+            })
+
+            # 결과 저장
+            validation_results[model_name] = {
+                "model": model,
+                "f1_score": f1,
+                "confusion_matrix": cm.tolist(),
+                "predictions": predictions.tolist()
+            }
+            
+            _logger.info(f"{model_name} - Validation F1: {f1:.4f}")
         
-        # 결과 저장
-        self.validation_scores = {
-            'mean_score': np.mean(cv_scores),
-            'std_score': np.std(cv_scores),
-            'cv_scores': cv_scores.tolist()
-        }
-        
-        _logger.info(f"Validation completed. Mean CV score: {self.validation_scores['mean_score']:.4f}")
-        
-        return self.validation_scores
-    
-    def validate_with_threshold(self, model: Any, X: pd.DataFrame, y: pd.Series, 
-                              threshold: float = 0.8) -> Tuple[bool, Dict[str, Any]]:
-        """임계값을 기준으로 모델 검증을 수행합니다."""
-        validation_results = self.validate(model, X, y)
-        
-        # 임계값 기준 검증
-        is_valid = validation_results['mean_score'] >= threshold
-        
-        _logger.info(f"Model validation {'passed' if is_valid else 'failed'} "
-                    f"(threshold: {threshold}, score: {validation_results['mean_score']:.4f})")
-        
-        return is_valid, validation_results 
+        return validation_results

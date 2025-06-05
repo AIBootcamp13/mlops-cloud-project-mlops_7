@@ -1,53 +1,39 @@
-from typing import Dict, Any
-
 import pandas as pd
-from sklearn.metrics import classification_report, confusion_matrix
-import numpy as np
-
+from sklearn.metrics import f1_score, confusion_matrix
+import wandb
 from src.utils.log import get_logger
 
-_logger = get_logger("model_evaluator")
+_logger = get_logger(__name__)
 
-class ModelEvaluator:
-    def __init__(self):
-        self.metrics = {}
+
+class Evaluator:
+    """모든 모델 최종 평가 클래스"""
     
-    def evaluate(self, model: Any, scaler: Any, X_test: pd.DataFrame, y_test: pd.Series) -> Dict[str, Any]:
-        """모델을 평가하고 성능 지표를 반환합니다."""
-        _logger.info("Starting model evaluation...")
+    def evaluate_all_models(self, trained_models: dict, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
+        """모든 모델 최종 평가"""
+        evaluation_results = {}
         
-        # 예측
-        X_test_scaled = scaler.transform(X_test)
-        y_pred = model.predict(X_test_scaled)
+        for model_name, model in trained_models.items():
+            predictions = model.predict(X_test)
+            
+            f1 = f1_score(y_test, predictions, average='weighted')
+            conf_matrix = confusion_matrix(y_test, predictions)
+            
+            # Feature importance
+            feature_importance = None
+            if hasattr(model, 'feature_importances_'):
+                feature_importance = model.feature_importances_
+            
+            wandb.log({f"{model_name}_test_f1_score": f1})
+            
+            evaluation_results[model_name] = {
+                "model": model,
+                "f1_score": f1,
+                "confusion_matrix": conf_matrix,
+                "feature_importance": feature_importance,
+                "predictions": predictions
+            }
+            
+            _logger.info(f"{model_name} Final - F1-Score: {f1:.4f}")
         
-        # 성능 지표 계산
-        report = classification_report(y_test, y_pred, output_dict=True)
-        conf_matrix = confusion_matrix(y_test, y_pred)
-        
-        # 결과 저장
-        self.metrics = {
-            'accuracy': report['accuracy'],
-            'precision': report['weighted avg']['precision'],
-            'recall': report['weighted avg']['recall'],
-            'f1_score': report['weighted avg']['f1-score'],
-            'confusion_matrix': conf_matrix.tolist(),
-            'class_report': report
-        }
-        
-        _logger.info(f"Evaluation completed. Accuracy: {self.metrics['accuracy']:.4f}")
-        
-        return self.metrics
-    
-    def get_feature_importance(self, model: Any, feature_names: list) -> Dict[str, float]:
-        """특성 중요도를 계산하고 반환합니다."""
-        importance_scores = model.feature_importances_
-        feature_importance = dict(zip(feature_names, importance_scores))
-        
-        # 중요도 기준으로 정렬
-        sorted_importance = dict(sorted(
-            feature_importance.items(),
-            key=lambda x: x[1],
-            reverse=True
-        ))
-        
-        return sorted_importance 
+        return evaluation_results
