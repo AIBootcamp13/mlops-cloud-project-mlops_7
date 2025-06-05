@@ -1,10 +1,7 @@
-from datetime import datetime
-
 import pandas as pd
 
 from src.libs.storage import Storage
 from src.libs.weather.asosstation import AsosStation
-from src.utils.config import DEFAULT_DATE_FORMAT
 from src.utils.log import get_logger
 
 
@@ -40,10 +37,7 @@ class AsosDataLoader:
 
         return asos_data
 
-    def load_at(self, fetching_date: datetime) -> dict[AsosStation, pd.DataFrame]:
-        sub_directory = fetching_date.strftime(DEFAULT_DATE_FORMAT)
-        asos_data = {}
-
+    def load_weather_dataset_at(self, sub_directory: str) -> pd.DataFrame:
         storage_keys = self.storage.retrieve_in_datasets(sub_directory=sub_directory)
         _logger.info(
             "Result of retrieve_in_datasets",
@@ -52,18 +46,14 @@ class AsosDataLoader:
                 "storage_keys": storage_keys,
             },
         )
-        for storage_key in storage_keys:
-            expected_id = storage_key.split("-")[-2]
-            if not expected_id.isnumeric():
-                continue
 
-            station_id = int(expected_id)
-            asos_station = AsosStation(station_id)
+        weather_dfs = []
+        for storage_key in storage_keys:
             asos_station_df = self.storage.read_as_dataframe(storage_key)
 
             if self.UNNAMED_COLUMN in asos_station_df.columns:
                 asos_station_df = asos_station_df.drop(self.UNNAMED_COLUMN, axis=1)
 
-            asos_data[asos_station] = asos_station_df
+            weather_dfs.append(asos_station_df)
 
-        return asos_data
+        return pd.concat(weather_dfs)
