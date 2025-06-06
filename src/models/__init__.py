@@ -1,11 +1,11 @@
-# from .trainer import ModelTrainer
-# from .evaluator import ModelEvaluator
-# from .validator import ModelValidator
-# from .registry import ModelRegistry
+# src/models/__init__.py
 
-# __all__ = [
-#     'ModelTrainer',
-#     'ModelEvaluator',
-#     'ModelValidator',
-#     'ModelRegistry'
-# ] 
+from src.models.random_forest import RandomForestModel
+from src.models.xgboost import XGBoostModel
+from src.models.lightgbm import LightGBMModel
+
+MODEL_REGISTRY = {
+    "random_forest": RandomForestModel,
+    "xgboost": XGBoostModel,
+    "lightgbm": LightGBMModel,
+}
