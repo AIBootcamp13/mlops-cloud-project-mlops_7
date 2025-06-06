@@ -11,17 +11,3 @@ def get_dynamic_default_args():
         "email": config.AIRFLOW_ALERT_EMAIL if config.AIRFLOW_ALERT_EMAIL else None,
         "email_on_failure": config.AIRFLOW_EMAIL_ON_FAILURE,
     }
-
-
-# %%
-
-KEY_LAST_FETCHING_DATE = "last_fetching_date"
-KEY_FEATURE_DATASET_STORAGE_KEY = "feature_dataset_storage_key"
-
-
-X_TRAIN_KEY = "x_train"
-Y_TRAIN_KEY = "y_train"
-X_VAL_KEY = "x_val"
-Y_VAL_KEY = "y_val"
-X_TEST_KEY = "x_test"
-Y_TEST_KEY = "y_test"

@@ -1,19 +1,21 @@
 from datetime import datetime
-import numpy as np
-import pandas as pd
+
 import joblib
 import wandb
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
+from config.default_args import get_dynamic_default_args
+from config.keys import KEY_FEATURE_DATASET_STORAGE_KEY
 from lightgbm import LGBMRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
+from sklearn.tree import DecisionTreeRegressor
+from xgboost import XGBRegressor
+
 from airflow.decorators import dag, task, task_group
 from airflow.models import Variable
-from config.default_args import KEY_FEATURE_DATASET_STORAGE_KEY, get_dynamic_default_args
 from src.libs.storage import Storage
 from src.utils.log import get_logger
+
 
 # 공통 설정
 _logger = get_logger("weather_automated_pipeline")
@@ -25,12 +27,13 @@ HYPERPARAMS = {
     "DecisionTree": {"max_depth": 5},
     "RandomForest": {"n_estimators": 100, "max_depth": 10},
     "XGBoost": {"n_estimators": 100, "learning_rate": 0.1},
-    "LightGBM": {"n_estimators": 100, "learning_rate": 0.1}
+    "LightGBM": {"n_estimators": 100, "learning_rate": 0.1},
 }
 
 # WandB 설정
 WANDB_PROJECT = "weather_modeling"
 WANDB_API_KEY = Variable.get("WANDB_API_KEY")
+
 
 @dag(
     dag_id="weather_automated_pipeline",
@@ -92,24 +95,16 @@ def automated_pipeline_dag():
 
         # 4개 모델 순차 실행
         train_and_evaluate.override(task_id="decision_tree")(
-            model_name="DecisionTree",
-            model_class=DecisionTreeRegressor,
-            params=HYPERPARAMS["DecisionTree"]
+            model_name="DecisionTree", model_class=DecisionTreeRegressor, params=HYPERPARAMS["DecisionTree"]
         )
         train_and_evaluate.override(task_id="random_forest")(
-            model_name="RandomForest",
-            model_class=RandomForestRegressor,
-            params=HYPERPARAMS["RandomForest"]
+            model_name="RandomForest", model_class=RandomForestRegressor, params=HYPERPARAMS["RandomForest"]
         )
         train_and_evaluate.override(task_id="xgboost")(
-            model_name="XGBoost",
-            model_class=XGBRegressor,
-            params=HYPERPARAMS["XGBoost"]
+            model_name="XGBoost", model_class=XGBRegressor, params=HYPERPARAMS["XGBoost"]
         )
         train_and_evaluate.override(task_id="lightgbm")(
-            model_name="LightGBM",
-            model_class=LGBMRegressor,
-            params=HYPERPARAMS["LightGBM"]
+            model_name="LightGBM", model_class=LGBMRegressor, params=HYPERPARAMS["LightGBM"]
         )
 
     # 전체 실행 순서: 데이터 불러오기 ➝ 학습/평가 수행
