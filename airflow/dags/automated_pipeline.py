@@ -30,13 +30,14 @@ MODEL_NAMES = ["random_forest", "xgboost"]
 )
 def automated_pipeline_dag():
     @task
-    def get_experiment_name(model_name:str) -> str:
+    def get_experiment_name(model_name: str) -> str:
         from datetime import datetime
 
         from src.utils.config import DEFAULT_DATE_FORMAT
 
-        date_str = datetime.now().strftime(DEFAULT_DATE_FORMAT)
-        return f"{date_str}-{model_name}"
+        current = datetime.now()
+        date_str = current.strftime(DEFAULT_DATE_FORMAT)
+        return f"{date_str}-{current.microsecond}-{model_name}"
 
     dataset_keys = prepare_data(432)
     experiment_names = get_experiment_name.partial().expand(model_name=MODEL_NAMES)
@@ -49,7 +50,7 @@ def automated_pipeline_dag():
     eval_results = evaluate.partial(
         val_x_key=dataset_keys["val_x"],
         val_y_key=dataset_keys["val_y"],
-    ).expand(experiment_name=experiment_names,model_artifact_ref=train_results)
+    ).expand(experiment_name=experiment_names, model_artifact_ref=train_results)
 
     test.partial(
         test_x_key=dataset_keys["test_x"],

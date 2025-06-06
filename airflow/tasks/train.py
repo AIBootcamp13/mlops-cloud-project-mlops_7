@@ -34,7 +34,7 @@ def train(train_x_storage_key: str, train_y_storage_key: str, experiment_name: s
 
     model_artifact_ref = tracker.register_model(
         model,
-        model_name="random-forest",
+        model_name=model_name,
         metadata={
             "framework": "sklearn",
             "datasets": {

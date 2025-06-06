@@ -1,4 +1,4 @@
-from xgboost import XGBRegressor
+from xgboost import XGBClassifier
 
 from src.models.base import BaseModel
 
@@ -22,7 +22,7 @@ class XGBoostModel(BaseModel):
             x (DataFrame): 학습 특성 (이미 LabelEncoder로 변환된 상태)
             y (ndarray/Series): 타겟 변수
         """
-        self.model = XGBRegressor(**self.params)
+        self.model = XGBClassifier(**self.params)
         self.model.fit(x, y)
         return self
 
@@ -44,18 +44,12 @@ class XGBoostModel(BaseModel):
     @staticmethod
     def default_params() -> dict:
         return {
-            "n_estimators": 100,  # 부스팅 단계 수 (기본값: 100)
-            "learning_rate": 0.01,  # 학습률 (기본값: 0.3)
-            "max_depth": 6,  # 트리의 최대 깊이 (기본값: 6)
-            "min_child_weight": 1,  # 자식 노드에 필요한 최소 가중치 합계 (기본값: 1)
-            "gamma": 0,  # 노드 분할 시 발생하는 손실 감소에 대한 최소값 (기본값: 0)
-            "subsample": 1.0,  # 훈련 인스턴스의 하위 샘플 비율 (기본값: 1)
-            "colsample_bytree": 1.0,  # 각 트리 구성 시 사용되는 특성의 비율 (기본값: 1)
-            "objective": "reg:squarederror",  # 목적 함수 (기본값: 'reg:squarederror')
-            "reg_alpha": 0,  # L1 정규화 항 (기본값: 0)
-            "reg_lambda": 1,  # L2 정규화 항 (기본값: 1)
-            "random_state": None,  # 난수 생성을 위한 시드값 (기본값: None)
-            "tree_method": "hist",
-            "enable_categorical": True,
-            "n_jobs": -1,  # 병렬 처리에 사용할 스레드 수 (기본값: None)
+            "n_estimators": 100,
+            "learning_rate": 0.1,
+            "max_depth": 6,
+            "min_child_weight": 1,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "random_state": 42,
+            "n_jobs": -1,
         }

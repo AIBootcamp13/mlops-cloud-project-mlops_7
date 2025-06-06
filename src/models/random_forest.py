@@ -1,4 +1,4 @@
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
 
 from src.models.base import BaseModel
 
@@ -22,7 +22,7 @@ class RandomForestModel(BaseModel):
             x (DataFrame): 학습 특성 (이미 LabelEncoder로 변환된 상태)
             y (ndarray/Series): 타겟 변수
         """
-        self.model = RandomForestRegressor(**self.params)
+        self.model = RandomForestClassifier(**self.params)
         self.model.fit(x, y)
         return self
 
@@ -44,13 +44,12 @@ class RandomForestModel(BaseModel):
     @staticmethod
     def default_params() -> dict:
         return {
-            "n_estimators": 100,  # 모델에서 사용할 트리의 개수 (기본값: 100)
-            "criterion": "squared_error",  # 분기 품질을 측정하는 함수 (기본값: 'squared_error')
-            "max_depth": None,  # 트리의 최대 깊이 (기본값: None, 제한 없음)
-            "min_samples_split": 2,  # 내부 노드를 분할하는 데 필요한 최소 샘플 수 (기본값: 2)
-            "min_samples_leaf": 1,  # 리프 노드에 필요한 최소 샘플 수 (기본값: 1)
-            "max_features": "sqrt",  # 최적의 분할을 찾을 때 고려할 특성의 수 (기본값: 'sqrt')
-            "bootstrap": True,  # 부트스트랩 샘플 사용 여부 (기본값: True)
-            "random_state": None,  # 난수 생성을 위한 시드값 (기본값: None)
-            "n_jobs": -1,  # 병렬 처리에 사용할 코어 수 (기본값: None)
+            "n_estimators": 100,
+            "max_depth": 10,
+            "min_samples_split": 2,
+            "min_samples_leaf": 1,
+            "max_features": "sqrt",
+            "bootstrap": True,
+            "random_state": 42,
+            "n_jobs": -1,
         }

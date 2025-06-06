@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import confusion_matrix, f1_score, mean_absolute_error, mean_squared_error, r2_score
 
 
 def calculate_rmse(y_true, y_pred):
@@ -55,8 +55,11 @@ def evaluate_model(y_true, y_pred):
     Returns:
         dict: 평가 지표 딕셔너리
     """
+
+    f1 = f1_score(y_true, y_pred, average="macro")
+    cm = confusion_matrix(y_true, y_pred)
     return {
-        "rmse": calculate_rmse(y_true, y_pred),
-        "mae": calculate_mae(y_true, y_pred),
+        "f1_score": f1,
+        "confusion_matrix": cm.tolist(),
         "r2": calculate_r2(y_true, y_pred),
     }
