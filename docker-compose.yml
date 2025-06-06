@@ -42,6 +42,7 @@ x-airflow-common: &airflow-common
     - ./airflow/plugins:/opt/airflow/plugins
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/config:/opt/airflow/config
+    - ./airflow/tasks:/opt/airflow/tasks
   depends_on:
     postgres:
       condition: service_healthy

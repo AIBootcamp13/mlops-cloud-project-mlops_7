@@ -1,18 +1,23 @@
 from datetime import datetime
 
-from config.default_args import KEY_FEATURE_DATASET_STORAGE_KEY, get_dynamic_default_args
+from config.default_args import get_dynamic_default_args
+from tasks.data import prepare_data
+from tasks.eval import evaluate
+from tasks.test import test
+from tasks.train import train
 
 from airflow.decorators import dag, task
-from airflow.models import Variable
-from src.libs.storage import Storage
 from src.utils.log import get_logger
 
 
-FIRST_COLLECTING_DURATION = 5  # 연단위
+TARGET_COLUMN = "weather"
+
+
+_logger = get_logger("weather_automated_pipeline")
 
 default_args = get_dynamic_default_args()
 
-_logger = get_logger("weather_automated_pipeline")
+MODEL_NAMES = ["random_forest", "xgboost"]
 
 
 @dag(
@@ -24,39 +29,33 @@ _logger = get_logger("weather_automated_pipeline")
     default_args=default_args,
 )
 def automated_pipeline_dag():
-    storage = Storage.create()
-
     @task
-    def train():
-        """모델 학습"""
-        # 데이터 준비
-        feature_storage_key = Variable.get(KEY_FEATURE_DATASET_STORAGE_KEY)
-        features = storage.read_as_dataframe(feature_storage_key)
-        _logger.info(f"Train Features; shape: {features.shape}")
-        # TODO 모델 학습하고 반환하는 로직을 작성합니다.
+    def get_experiment_name(model_name: str) -> str:
+        from datetime import datetime
 
-    @task
-    def test():
-        """모델 검증"""
-        _logger.info("Evaluate Trained ML Model")
-        # TODO 학습된 모델을 test dataset 으로 평가하는 로직을 작성합니다.
+        from src.utils.config import DEFAULT_DATE_FORMAT
 
-    @task
-    def evaluate():
-        """모델 평가"""
-        _logger.info("Test Trained ML Model with Validation Dataset")
-        # TODO 학습된 모델을 validation dataset 으로 평가하는 로직을 작성합니다.
+        current = datetime.now()
+        date_str = current.strftime(DEFAULT_DATE_FORMAT)
+        return f"{date_str}-{current.microsecond}-{model_name}"
 
-    @task
-    def save_model():
-        """ML Model 을 Model Registry 에 저장"""
-        _logger.info("Save Trained ML Model")
-        # TODO 학습된 모델을 Model Registry 인 wandb 에 저장하는 로직을 작성합니다.
+    dataset_keys = prepare_data(432)
+    experiment_names = get_experiment_name.partial().expand(model_name=MODEL_NAMES)
 
-    train()
-    test()
-    evaluate()
-    save_model()
+    train_results = train.partial(
+        train_x_storage_key=dataset_keys["train_x"],
+        train_y_storage_key=dataset_keys["train_y"],
+    ).expand(experiment_name=experiment_names, model_name=MODEL_NAMES)
+
+    eval_results = evaluate.partial(
+        val_x_key=dataset_keys["val_x"],
+        val_y_key=dataset_keys["val_y"],
+    ).expand(experiment_name=experiment_names, model_artifact_ref=train_results)
+
+    test.partial(
+        test_x_key=dataset_keys["test_x"],
+        test_y_key=dataset_keys["test_y"],
+    ).expand(experiment_name=experiment_names, model_artifact_ref=eval_results)
 
 
 automated_pipeline_dag()
