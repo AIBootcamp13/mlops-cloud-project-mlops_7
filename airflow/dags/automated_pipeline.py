@@ -7,17 +7,12 @@ from tasks.test import test
 from tasks.train import train
 
 from airflow.decorators import dag, task
-from src.utils.log import get_logger
+from airflow.utils.task_group import TaskGroup
 
-
-TARGET_COLUMN = "weather"
-
-
-_logger = get_logger("weather_automated_pipeline")
 
 default_args = get_dynamic_default_args()
 
-MODEL_NAMES = ["random_forest", "xgboost"]
+MODEL_NAMES = ["random_forest", "lightgbm", "xgboost"]
 
 
 @dag(
@@ -29,33 +24,42 @@ MODEL_NAMES = ["random_forest", "xgboost"]
     default_args=default_args,
 )
 def automated_pipeline_dag():
+    dataset_keys = prepare_data()
+
     @task
-    def get_experiment_name(model_name: str) -> str:
+    def get_experiment_name(model: str) -> str:
         from datetime import datetime
 
         from src.utils.config import DEFAULT_DATE_FORMAT
 
         current = datetime.now()
         date_str = current.strftime(DEFAULT_DATE_FORMAT)
-        return f"{date_str}-{current.microsecond}-{model_name}"
+        return f"{date_str}-{current.microsecond}-{model}"
 
-    dataset_keys = prepare_data(432)
-    experiment_names = get_experiment_name.partial().expand(model_name=MODEL_NAMES)
+    for model_name in MODEL_NAMES:
+        with TaskGroup(group_id=f"model_{model_name}") as _:
+            experiment_name = get_experiment_name(model_name)
 
-    train_results = train.partial(
-        train_x_storage_key=dataset_keys["train_x"],
-        train_y_storage_key=dataset_keys["train_y"],
-    ).expand(experiment_name=experiment_names, model_name=MODEL_NAMES)
+            train_result = train(
+                train_x_storage_key=dataset_keys["train_x"],
+                train_y_storage_key=dataset_keys["train_y"],
+                experiment_name=experiment_name,
+                model_name=model_name,
+            )
 
-    eval_results = evaluate.partial(
-        val_x_key=dataset_keys["val_x"],
-        val_y_key=dataset_keys["val_y"],
-    ).expand(experiment_name=experiment_names, model_artifact_ref=train_results)
+            eval_result = evaluate(
+                val_x_key=dataset_keys["val_x"],
+                val_y_key=dataset_keys["val_y"],
+                experiment_name=experiment_name,
+                model_artifact_ref=train_result,
+            )
 
-    test.partial(
-        test_x_key=dataset_keys["test_x"],
-        test_y_key=dataset_keys["test_y"],
-    ).expand(experiment_name=experiment_names, model_artifact_ref=eval_results)
+            test(
+                test_x_key=dataset_keys["test_x"],
+                test_y_key=dataset_keys["test_y"],
+                experiment_name=experiment_name,
+                model_artifact_ref=eval_result,
+            )
 
 
 automated_pipeline_dag()
