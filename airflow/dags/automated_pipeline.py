@@ -30,13 +30,13 @@ MODEL_NAMES = ["random_forest", "xgboost", "lightgbm"]
 )
 def automated_pipeline_dag():
     @task
-    def get_experiment_name() -> str:
+    def get_experiment_name(model_name:str) -> str:
         from datetime import datetime
 
         from src.utils.config import DEFAULT_DATE_FORMAT
 
         date_str = datetime.now().strftime(DEFAULT_DATE_FORMAT)
-        return f"{date_str}-weather-prediction-model"
+        return f"{date_str}-{model_name}"
 
     dataset_keys = prepare_data(432)
     experiment_name = get_experiment_name()

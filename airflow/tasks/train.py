@@ -24,7 +24,7 @@ def train(train_x_storage_key: str, train_y_storage_key: str, experiment_name: s
     model_params = MODEL_REGISTRY[model_name].default_params()
 
     tracker.start_experiment(
-        experiment_name=f"{experiment_name}-{model_name}",
+        experiment_name=experiment_name,
         params=model_params,
         job_type="training",
     )
