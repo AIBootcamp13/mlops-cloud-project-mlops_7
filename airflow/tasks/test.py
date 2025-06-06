@@ -13,13 +13,13 @@ def test(test_x_key: str, test_y_key: str, experiment_name: str, model_artifact_
     test_y = storage.read_as_dataframe(test_y_key).to_numpy().ravel()
 
     tracker = WandbTracker.create()
-    
+
     tracker.start_experiment(
         experiment_name=experiment_name,
         params={},
         job_type="test",
     )
-    
+
     model = tracker.load_model(model_artifact_ref)
 
     pred_y = model.predict(test_x)
@@ -27,5 +27,5 @@ def test(test_x_key: str, test_y_key: str, experiment_name: str, model_artifact_
     tracker.log_metrics(metrics)
 
     tracker.end_experiment()
-    
+
     return model_artifact_ref

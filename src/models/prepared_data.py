@@ -20,21 +20,15 @@ class PreparedData:
 
         result = df.copy()
         result["date"] = pd.to_datetime(result["tm"], format="%Y%m%d")
-        result.solt_values(by="date", inplace=True)
+        result = result.sort_values(by="date")
 
         n = len(result)
         train_end = int(n * 0.7)
         val_end = int(n * 0.85)
 
         train_df = result.iloc[:train_end]
-        val_df = result.ilc[:val_end]
+        val_df = result.iloc[:val_end]
         test_df = result.iloc[val_end:]
-
-        # df['year'] = pd.to_datetime(df['tm'], format='%Y%m%d').dt.year
-
-        # train_df = df[df['year'].isin([2020, 2021, 2022])]
-        # val_df = df[df['year'] == 2023]
-        # test_df = df[df['year'] == 2024]
 
         _logger.info(f"Data split - Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
 
@@ -42,6 +36,6 @@ class PreparedData:
 
     def prepare_features_target(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
         """특성과 타겟 분리"""
-        X = df.drop(columns=[self.target_column], errors="ignore")
+        x = df.drop(columns=[self.target_column], errors="ignore")
         y = df[self.target_column] if self.target_column in df.columns else None
-        return X, y
+        return x, y

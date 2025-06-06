@@ -13,7 +13,7 @@ def evaluate(val_x_key: str, val_y_key: str, experiment_name: str, model_artifac
     val_y = storage.read_as_dataframe(val_y_key).to_numpy().ravel()
 
     tracker = WandbTracker.create()
-    
+
     tracker.start_experiment(
         experiment_name=experiment_name,
         params={},
