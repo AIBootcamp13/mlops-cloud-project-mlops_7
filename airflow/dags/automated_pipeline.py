@@ -17,7 +17,7 @@ _logger = get_logger("weather_automated_pipeline")
 
 default_args = get_dynamic_default_args()
 
-MODEL_NAMES = ["random_forest", "xgboost", "lightgbm"]
+MODEL_NAMES = ["random_forest", "xgboost"]
 
 
 @dag(

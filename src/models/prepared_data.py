@@ -19,8 +19,7 @@ class PreparedData:
         """
 
         result = df.copy()
-        result["date"] = pd.to_datetime(result["tm"], format="%Y%m%d")
-        result = result.sort_values(by="date")
+        result = result.sort_values(by="tm")
 
         n = len(result)
         train_end = int(n * 0.7)
