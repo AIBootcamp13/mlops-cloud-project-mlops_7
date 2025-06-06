@@ -11,10 +11,6 @@ class MLExperimentTracker(ABC):
         """새 실험 시작"""
 
     @abstractmethod
-    def resume_experiment(self, run_id: str, job_type: str):
-        """기존 실험 재개"""
-
-    @abstractmethod
     def log_metrics(self, metrics: dict, step: int | None = None):
         """메트릭 로깅"""
 

@@ -27,13 +27,6 @@ class WandbTracker(MLExperimentTracker):
         self.entity = entity
         self.run = None
         self.is_active = False
-        self._run_id = None
-
-    def get_run_id(self) -> str:
-        """현재 실행 중인 run의 ID 반환"""
-        if not self.is_active:
-            raise RuntimeError("활성화된 실험이 없습니다.")
-        return self._run_id
 
     def start_experiment(
         self, experiment_name: str, params: dict, job_type: str, tags: list[str] | None = None
@@ -64,31 +57,6 @@ class WandbTracker(MLExperimentTracker):
             job_type=job_type,
             config=params,
             tags=tags,
-        )
-
-        self._run_id = self.run.id
-        self.is_active = True
-        return self.run
-
-    def resume_experiment(self, run_id: str, job_type: str):
-        """
-        기존 실험 세션 재개
-
-        Args:
-            run_id: 재개할 W&B 실행 ID
-            job_type: 실행하는 작업의 종류나 목적
-
-        Returns:
-            재개된 W&B 실행 객체
-        """
-        if self.is_active:
-            print("실험이 이미 활성화되어 있습니다.")
-            return self.run
-
-        self.run = wandb.init(
-            id=run_id,
-            resume="must",
-            job_type=job_type,
         )
 
         self.is_active = True
@@ -187,7 +155,6 @@ class WandbTracker(MLExperimentTracker):
             wandb.finish()
             self.is_active = False
             self.run = None
-            self._run_id = None
 
     @classmethod
     def create(cls) -> WandbTracker:
