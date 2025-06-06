@@ -37,7 +37,7 @@ default_args = get_dynamic_default_args()
 )
 def automated_pipeline_dag():
     @task
-    def generate_experiment_name() -> str:
+    def get_experiment_name() -> str:
         from datetime import datetime
 
         from src.utils.config import DEFAULT_DATE_FORMAT
@@ -95,24 +95,25 @@ def automated_pipeline_dag():
         _logger.info(f"Pipeline completed. Saved models: {list(saved_artifacts.keys())}")
 
     dataset_keys = prepare_data(432)
+    experiment_name=get_experiment_name()
     result = train(
         train_x_storage_key=dataset_keys["train_x"],
         train_y_storage_key=dataset_keys["train_y"],
-        experiment_name=generate_experiment_name(),
+        experiment_name=experiment_name,
     )
     result = evaluate(
         val_x_key=dataset_keys["val_x"],
         val_y_key=dataset_keys["val_y"],
-        experiment_name=generate_experiment_name(),
+        experiment_name=experiment_name,
         model_artifact_ref=result,
     )
     result = test(
         test_x_key=dataset_keys["test_x"],
         test_y_key=dataset_keys["test_y"],
-        experiment_id=result["experiment_id"],
-        model_artifact_ref=result["model_artifact_ref"],
+        experiment_name=experiment_name,
+        model_artifact_ref=result,
     )
-    choose_best_model(result["model_artifact_ref"])
+    choose_best_model(result)
 
 
 automated_pipeline_dag()
