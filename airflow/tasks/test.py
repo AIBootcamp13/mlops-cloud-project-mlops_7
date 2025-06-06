@@ -2,7 +2,7 @@ from airflow.decorators import task
 
 
 @task
-def test(test_x_key: str, test_y_key: str, experiment_id: str, model_artifact_ref: str) -> dict:
+def test(test_x_key: str, test_y_key: str, experiment_name: str, model_artifact_ref: str) -> str:
     """모델 검증"""
     from src.evaluation.metrics import evaluate_model
     from src.libs.storage import Storage
@@ -13,8 +13,13 @@ def test(test_x_key: str, test_y_key: str, experiment_id: str, model_artifact_re
     test_y = storage.read_as_dataframe(test_y_key).to_numpy().ravel()
 
     tracker = WandbTracker.create()
-    tracker.resume_experiment(experiment_id, job_type="test")
-
+    
+    tracker.start_experiment(
+        experiment_name=experiment_name,
+        params={},
+        job_type="test",
+    )
+    
     model = tracker.load_model(model_artifact_ref)
 
     pred_y = model.predict(test_x)
@@ -22,4 +27,5 @@ def test(test_x_key: str, test_y_key: str, experiment_id: str, model_artifact_re
     tracker.log_metrics(metrics)
 
     tracker.end_experiment()
-    return {"experiment_id": experiment_id, "model_artifact_ref": model_artifact_ref}
+    
+    return model_artifact_ref

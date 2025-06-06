@@ -13,7 +13,8 @@ class Evaluator:
         """모든 모델 최종 평가"""
         evaluation_results = {}
         
-        for model_name, model in trained_models.items():
+        for model_name, model_info in trained_models.items():
+            model = model_info["model"]
             predictions = model.predict(X_test)
             
             f1 = f1_score(y_test, predictions, average='weighted')

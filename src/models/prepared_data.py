@@ -16,11 +16,22 @@ class PreparedData:
         """
         
         df = df.copy() 
-        df['year'] = pd.to_datetime(df['tm'], format='%Y%m%d').dt.year
+        df['date'] = pd.to_datetime(df['tm'], format='%Y%m%d')
+        df.solt_values(by='date', inplace=True)
         
-        train_df = df[df['year'].isin([2020, 2021, 2022])]
-        val_df = df[df['year'] == 2023]
-        test_df = df[df['year'] == 2024]
+        n=len(df)
+        train_end = int(n*0.8)
+        val_end = int(n*0.9)
+        
+        train_df=df.iloc[:train_end]
+        val_df=df.ilc[:val_end]
+        test_df=df.iloc[val_end:]
+        
+        # df['year'] = pd.to_datetime(df['tm'], format='%Y%m%d').dt.year
+        
+        # train_df = df[df['year'].isin([2020, 2021, 2022])]
+        # val_df = df[df['year'] == 2023]
+        # test_df = df[df['year'] == 2024]
         
         _logger.info(f"Data split - Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
         

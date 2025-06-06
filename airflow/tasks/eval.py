@@ -13,7 +13,12 @@ def evaluate(val_x_key: str, val_y_key: str, experiment_name: str, model_artifac
     val_y = storage.read_as_dataframe(val_y_key).to_numpy().ravel()
 
     tracker = WandbTracker.create()
-    tracker.resume_experiment(experiment_id, job_type="evaluation")
+    
+    tracker.start_experiment(
+        experiment_name=experiment_name,
+        params={},
+        job_type="evaluation",
+    )
 
     model = tracker.load_model(model_artifact_ref)
     pred_y = model.predict(val_x)

@@ -103,8 +103,8 @@ def automated_pipeline_dag():
     result = evaluate(
         val_x_key=dataset_keys["val_x"],
         val_y_key=dataset_keys["val_y"],
-        experiment_id=result["experiment_id"],
-        model_artifact_ref=result["model_artifact_ref"],
+        experiment_name=generate_experiment_name(),
+        model_artifact_ref=result,
     )
     result = test(
         test_x_key=dataset_keys["test_x"],
