@@ -1,19 +1,23 @@
 from datetime import datetime
+
+import joblib
 import numpy as np
 import pandas as pd
-import joblib
 import wandb
-from sklearn.model_selection import train_test_split, KFold
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
+from config.default_args import get_dynamic_default_args
+from config.keys import KEY_FEATURE_DATASET_STORAGE_KEY
 from lightgbm import LGBMRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import KFold, train_test_split
+from sklearn.tree import DecisionTreeRegressor
+from xgboost import XGBRegressor
+
 from airflow.decorators import dag, task, task_group
 from airflow.models import Variable
-from config.default_args import KEY_FEATURE_DATASET_STORAGE_KEY, get_dynamic_default_args
 from src.libs.storage import Storage
 from src.utils.log import get_logger
+
 
 # 공통 설정: 로거, 기본 인자, 스토리지 인스턴스 생성
 _logger = get_logger("weather_automated_pipeline")
@@ -25,12 +29,13 @@ HYPERPARAMS = {
     "DecisionTree": {"max_depth": 7},
     "RandomForest": {"n_estimators": 30, "max_depth": 5},
     "XGBoost": {"n_estimators": 75, "learning_rate": 0.1},
-    "LightGBM": {"n_estimators": 75, "learning_rate": 0.1}
+    "LightGBM": {"n_estimators": 75, "learning_rate": 0.1},
 }
 
 # Weights & Biases 설정
 WANDB_PROJECT = "weather_modeling"
 WANDB_API_KEY = Variable.get("WANDB_API_KEY")
+
 
 # DAG 정의
 @dag(
@@ -42,7 +47,6 @@ WANDB_API_KEY = Variable.get("WANDB_API_KEY")
     default_args=default_args,
 )
 def optimized_pipeline_dag():
-
     @task
     def load_data():
         # 저장소에서 전처리된 데이터를 로드하고 feature/target 분리
@@ -61,7 +65,7 @@ def optimized_pipeline_dag():
             # 6:2:2 비율로 데이터 분할
             X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
             X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
-            
+
             # 훈련용 데이터셋 전체 : K-Fold 수행용 데이터셋 생성
             X_trainval = pd.concat([X_train, X_val])
             y_trainval = pd.concat([y_train, y_val])
@@ -82,7 +86,7 @@ def optimized_pipeline_dag():
                 fold_rmse_scores.append(rmse)
                 models.append(model)
 
-                _logger.info(f"[{model_name}] Fold {i+1} RMSE: {rmse:.4f}")
+                _logger.info(f"[{model_name}] Fold {i + 1} RMSE: {rmse:.4f}")
 
             # 평균 RMSE 계산 및 최적 fold 선택
             mean_rmse = np.mean(fold_rmse_scores)
@@ -103,12 +107,14 @@ def optimized_pipeline_dag():
             wandb.login(key=WANDB_API_KEY)
             run = wandb.init(project=WANDB_PROJECT, name=f"{model_name}_run", reinit=True)
             run.config.update(params)
-            wandb.log({
-                "CV_RMSE": mean_rmse,  # 평균 교차검증 RMSE
-                "Test_RMSE": rmse,     # 테스트셋 RMSE
-                "MAE": mae,
-                "R2": r2
-            })
+            wandb.log(
+                {
+                    "CV_RMSE": mean_rmse,  # 평균 교차검증 RMSE
+                    "Test_RMSE": rmse,  # 테스트셋 RMSE
+                    "MAE": mae,
+                    "R2": r2,
+                }
+            )
 
             # 최적 모델 저장 및 업로드
             model_path = f"{model_name}_model.pkl"
@@ -119,28 +125,21 @@ def optimized_pipeline_dag():
 
         # 모델별 Task 실행 정의
         train_model.override(task_id="decision_tree")(
-            model_name="DecisionTree",
-            model_class=DecisionTreeRegressor,
-            params=HYPERPARAMS["DecisionTree"]
+            model_name="DecisionTree", model_class=DecisionTreeRegressor, params=HYPERPARAMS["DecisionTree"]
         )
         train_model.override(task_id="random_forest")(
-            model_name="RandomForest",
-            model_class=RandomForestRegressor,
-            params=HYPERPARAMS["RandomForest"]
+            model_name="RandomForest", model_class=RandomForestRegressor, params=HYPERPARAMS["RandomForest"]
         )
         train_model.override(task_id="xgboost")(
-            model_name="XGBoost",
-            model_class=XGBRegressor,
-            params=HYPERPARAMS["XGBoost"]
+            model_name="XGBoost", model_class=XGBRegressor, params=HYPERPARAMS["XGBoost"]
         )
         train_model.override(task_id="lightgbm")(
-            model_name="LightGBM",
-            model_class=LGBMRegressor,
-            params=HYPERPARAMS["LightGBM"]
+            model_name="LightGBM", model_class=LGBMRegressor, params=HYPERPARAMS["LightGBM"]
         )
 
     # 전체 파이프라인 실행 흐름 정의
     train_models_with_kfold(load_data())
+
 
 # DAG 호출
 optimized_pipeline_dag()
