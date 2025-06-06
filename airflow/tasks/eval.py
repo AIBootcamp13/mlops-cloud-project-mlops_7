@@ -4,9 +4,12 @@ from airflow.decorators import task
 @task
 def evaluate(val_x_key: str, val_y_key: str, experiment_name: str, model_artifact_ref: str) -> str:
     """모델 평가"""
-    from src.evaluation.metrics import evaluate_model
     from src.libs.storage import Storage
     from src.tracker.wandb import WandbTracker
+    from sklearn.metrics import f1_score, confusion_matrix
+    from src.utils.log import get_logger
+
+    _logger = get_logger(__name__)
 
     storage = Storage.create()
     val_x = storage.read_as_dataframe(val_x_key)
@@ -21,8 +24,25 @@ def evaluate(val_x_key: str, val_y_key: str, experiment_name: str, model_artifac
     )
 
     model = tracker.load_model(model_artifact_ref)
-    pred_y = model.predict(val_x)
-    metrics = evaluate_model(val_y, pred_y)
+    predictions = model.predict(val_x)
+    
+    f1 = f1_score(val_y, predictions, average='weighted')
+    conf_matrix = confusion_matrix(val_y, predictions)
+    
+    # Feature importance
+    feature_importance = None
+    if hasattr(model, 'feature_importances_'):
+        feature_importance = model.feature_importances_
+    
+    metrics = {
+        "model": model,
+        "f1_score": f1,
+        "confusion_matrix": conf_matrix,
+        "feature_importance": feature_importance,
+        "predictions": predictions
+    }
+    
+    _logger.info(f"{model.name} Final - F1-Score: {f1:.4f}")
 
     tracker.log_metrics(metrics)
 

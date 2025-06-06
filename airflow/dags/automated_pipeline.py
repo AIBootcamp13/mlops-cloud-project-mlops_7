@@ -39,7 +39,7 @@ def automated_pipeline_dag():
         return f"{date_str}-{model_name}"
 
     dataset_keys = prepare_data(432)
-    experiment_name = get_experiment_name()
+    experiment_name = get_experiment_name.partial().expand(model_name=MODEL_NAMES)
 
     train_results = train.partial(
         train_x_storage_key=dataset_keys["train_x"],
