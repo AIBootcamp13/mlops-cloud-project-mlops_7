@@ -55,6 +55,9 @@ def load_specific_data(stn_id: int, date: str ):
     else:
         print(f"[{year}] 요청 실패: {response.status_code}")
 
+
+    df = pd.DataFrame(all_data)
+
 #ex) region : 서울, date : 2010-01-01
 def create_feature_df(region: str, date: str) -> pd.DataFrame:
     """
