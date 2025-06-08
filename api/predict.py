@@ -1,3 +1,4 @@
+import datetime
 import os
 from pathlib import Path
 
@@ -8,7 +9,7 @@ import pandas as pd
 import joblib
 
 from src.libs.storage import Storage
-from src.libs.weather.asosstation import AsosStation
+from src.libs.weather.asosstation import AsosStation, get_station_id
 
 from src.data.imputer import WeatherDataImputer
 from src.data.labeler import WeatherLabeler
@@ -25,16 +26,11 @@ def load_model() -> object:
     model_path = Path(artifact_dir) / "model-xgboost.joblib"
     return joblib.load(model_path)
 
-
-MODEL = load_model()
-
 #asosstation.py 수정 요함
+#형식) region : 90, date : 20100101
 def load_specific_data(stn_id: int, date: str ):
     WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
     base_url = "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
-
-    this_year = date[:4]
-    this_date = date[4:]
 
     all_data = []
     
@@ -45,8 +41,8 @@ def load_specific_data(stn_id: int, date: str ):
         "dataType": "JSON",
         "dataCd": "ASOS",
         "dateCd": "DAY",
-        "startDt": f"{this_year}{this_date}",
-        "endDt": f"{this_year}{this_date}",
+        "startDt": f"{date}",
+        "endDt": f"{date}",
         "stnIds": stn_id,
     }
 
@@ -57,7 +53,7 @@ def load_specific_data(stn_id: int, date: str ):
         items = json_data.get("response", {}).get("body", {}).get("items", {}).get("item", [])
         all_data.extend(items)
     else:
-        print(f"[{this_year}] 요청 실패: {response.status_code}")
+        print(f"[{date}] 요청 실패: {response.status_code}")
 
 
     df = pd.DataFrame(all_data)
@@ -65,19 +61,29 @@ def load_specific_data(stn_id: int, date: str ):
 
 def preprocess(df: pd.DataFrame, target_date: str) -> pd.DataFrame:
     "입력날짜로 tm 변경 및 전처리 진행"
-    df['tm'] = target_date #예측 날짜고 tm 변경
-    df = WeatherDataImputer().fit_transform(df)
-    df = WeatherLabeler().fit_transform(df)
-    df = WeatherDataOutlierHandler().fit_transform(df)
-    df= WeatherDataTransformer().fit_transform(df)
+    result = df.copy()
+    result['tm'] = target_date #예측 날짜고 tm 변경
+    result = WeatherDataImputer().fit_transform(result)
+    result = WeatherLabeler().fit_transform(result)
+    result = WeatherDataOutlierHandler().fit_transform(result)
+    result= WeatherDataTransformer().fit_transform(result)
     
     #추론 시 타겟 제거
-    if "weather" in df.columns:
-            df = df.drop(columns=["weather"])
+    if "weather" in result.columns:
+            result = result.drop(columns=["weather"])
     
-    return df
+    return result
 
-#ex) region : 서울, date : 2010-01-01
+#형식) region : 서울, date : 2010-01-01
 def predict_df(region: str, date: str) -> str:
+    stn_id_input = get_station_id(region)
+    date_input = datetime.strptime(date, "%Y-%m-%d").strftime("%Y%m%d")
 
-    
+    df = load_specific_data(stn_id_input, date_input)
+
+    df = preprocess(df, date)
+
+    model = load_model()
+    prediction = model.predict(df)
+
+    print("예측 결과:", prediction[0])
