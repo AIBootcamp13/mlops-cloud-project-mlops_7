@@ -84,6 +84,13 @@ def predict_df(region: str, date: str) -> str:
     df = preprocess(df, date)
 
     model = load_model()
-    prediction = model.predict(df)
+    prediction = model.predict(df)[0]
 
-    print("예측 결과:", prediction[0])
+    print("예측 결과:", prediction)
+
+    
+    # ✅ 라벨 복호화
+    decoder = WeatherDataTransformer().target_encoder
+    prediction_label = decoder.inverse_transform([prediction])[0]
+
+    return prediction_label  # 예: '비'
