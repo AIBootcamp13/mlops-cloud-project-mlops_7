@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 
 from config.default_args import get_dynamic_default_args
 from tasks.data import prepare_data
@@ -60,6 +61,30 @@ def automated_pipeline_dag():
                 experiment_name=experiment_name,
                 model_artifact_ref=eval_result,
             )
+
+    @task
+    def save_model() -> None:
+        import wandb
+
+        """모델들 WANDB에 저장"""
+        run = wandb.init(
+            project="ml-ops-practice2",
+            name="Trained_XGBoost",
+            job_type="save",
+            config={}
+        )
+        artifact = wandb.Artifact("XGBoost", type="model")
+
+        artifact.metadata = {
+            "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "model_name": train_result.model_name
+        }
+
+        artifact.add_file(train_result.model)
+
+        run.log_artifact(artifact)
+        run.finish()
+
 
 
 automated_pipeline_dag()
