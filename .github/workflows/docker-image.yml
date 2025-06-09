@@ -30,13 +30,12 @@ jobs:
 
       - name: Build, tag, and push Docker image to Amazon ECR
         run: |
-          # 계정 ID 및 ECR URI 구성
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
           IMAGE_URI=$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
 
-          # Docker 이미지 빌드 및 Push
-          docker build -t $IMAGE_URI .
+          # airflow 디렉토리에 있는 Dockerfile 사용
+          docker build -t $IMAGE_URI airflow/
           docker push $IMAGE_URI
 
           echo "✅ Successfully pushed image to: $IMAGE_URI"
