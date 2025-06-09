@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir poetry
 WORKDIR /opt/project
 
 # 프로젝트 의존성 복사 및 설치
-COPY pyproject.toml poetry.lock* ./
+COPY pyproject.toml ./
 RUN poetry config virtualenvs.create false && \
     poetry install --with airflow --no-interaction
 
@@ -33,9 +33,10 @@ WORKDIR /opt/airflow
 COPY airflow/dags ./dags
 COPY airflow/plugins ./plugins
 COPY airflow/config ./config
+COPY airflow/tasks ./tasks
 
 # logs 디렉토리 생성 (복사하지 않고 빈 디렉토리 생성)
 RUN mkdir -p ./logs
 
 # PYTHONPATH 설정
-ENV PYTHONPATH=/opt/airflow:/opt/project:$PYTHONPATH
+ENV PYTHONPATH=/opt/airflow:/opt/project

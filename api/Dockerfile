@@ -14,7 +14,7 @@ RUN pip install -U pip setuptools
 RUN pip install --no-cache-dir poetry
 
 # 프로젝트 의존성만 복사
-COPY pyproject.toml poetry.lock* ./
+COPY pyproject.toml ./
 
 # API 관련 의존성만 설치
 RUN poetry config virtualenvs.create false && \
@@ -25,7 +25,7 @@ COPY src /app/src
 COPY api /app/api
 
 # PYTHONPATH 설정
-ENV PYTHONPATH=/app:$PYTHONPATH
+ENV PYTHONPATH=/app
 
 # API 서버 실행
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

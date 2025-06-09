@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  ECR_REPOSITORY: mlops-jandartech  # ECR 리포지토리 이름
+  ECR_REPOSITORY: weather-forcast/airflow  # ECR 리포지토리 이름
 
 jobs:
   build-and-push:
@@ -35,7 +35,7 @@ jobs:
           IMAGE_URI=$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
 
           # airflow 디렉토리에 있는 Dockerfile 사용
-          docker build -t $IMAGE_URI airflow/
+          docker build -t $IMAGE_URI -f airflow/Dockerfile .
           docker push $IMAGE_URI
 
           echo "✅ Successfully pushed image to: $IMAGE_URI"
