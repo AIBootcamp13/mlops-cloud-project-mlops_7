@@ -22,16 +22,18 @@ dependencies = [
     "jupyterlab (>=4.4.2,<5.0.0)",
     "notebook (>=7.4.2,<8.0.0)",
     "boto3 (>=1.38.23,<2.0.0)",
+    "python-dotenv (>=1.1.0,<2.0.0)"
 ]
 
 
 [tool.poetry.group.airflow.dependencies]
-wandb = "^0.19.11"
+wandb = "^0.20.1"
 psycopg2-binary = "^2.9.10"
 
 
 [tool.poetry.group.api.dependencies]
 fastapi = "^0.115.12"
+wandb = "^0.20.1"
 pydantic = "^2.11.5"
 uvicorn = "^0.34.2"
 gunicorn = "^23.0.0"
