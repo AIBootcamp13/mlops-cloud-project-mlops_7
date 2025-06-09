@@ -3,7 +3,7 @@ name: Build and Push Docker image to ECR
 on:
   push:
     branches:
-      - main  # main 브랜치에 push될 때 실행
+      - release  # release 브랜치에 push될 때 실행
 
 env:
   AWS_REGION: ap-northeast-2
